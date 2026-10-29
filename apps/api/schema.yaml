@@ -1,0 +1,1157 @@
+openapi: 3.0.3
+info:
+  title: Tommy's Bus API (demo)
+  version: 1.0.0
+  description: Demonstration API for Tommy's Bus. All schedules, fares and bookings
+    are demo data. No payments are processed.
+paths:
+  /api/v1/bookings/:
+    post:
+      operationId: bookings_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+          format: uuid
+        description: Client-generated UUID. Retrying with the same key and body returns
+          the original booking.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingCreated'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingCreated'
+          description: ''
+  /api/v1/bookings/{reference}/:
+    get:
+      operationId: bookings_retrieve
+      parameters:
+      - in: header
+        name: X-Booking-Token
+        schema:
+          type: string
+        description: Access token returned when the booking was created.
+        required: true
+      - in: path
+        name: reference
+        schema:
+          type: string
+          pattern: ^[Tt][Bb]-[A-Za-z0-9]{6}$
+        required: true
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+  /api/v1/bookings/{reference}/cancel/:
+    post:
+      operationId: bookings_cancel
+      parameters:
+      - in: header
+        name: X-Booking-Token
+        schema:
+          type: string
+        description: Access token returned when the booking was created.
+        required: true
+      - in: path
+        name: reference
+        schema:
+          type: string
+          pattern: ^[Tt][Bb]-[A-Za-z0-9]{6}$
+        required: true
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+  /api/v1/charter-inquiries/:
+    post:
+      operationId: charter_inquiries_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CharterInquiryCreateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharterInquiryReceipt'
+          description: ''
+  /api/v1/fares/:
+    get:
+      operationId: v1_fares_list
+      parameters:
+      - in: query
+        name: fare_type
+        schema:
+          type: string
+          enum:
+          - ADULT
+          - CHILD
+        description: |-
+          * `ADULT` - Adult (12+)
+          * `CHILD` - Child (2–11)
+      - in: query
+        name: route__slug
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fare'
+          description: ''
+  /api/v1/locations/:
+    get:
+      operationId: v1_locations_list
+      parameters:
+      - in: query
+        name: allows_pickup
+        schema:
+          type: boolean
+      - in: query
+        name: city
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Location'
+          description: ''
+  /api/v1/pricing-policy/:
+    get:
+      operationId: pricing_policy_retrieve
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingPolicy'
+          description: ''
+  /api/v1/quotes/:
+    post:
+      operationId: quotes_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+          description: ''
+  /api/v1/routes/:
+    get:
+      operationId: v1_routes_list
+      parameters:
+      - in: query
+        name: destination__slug
+        schema:
+          type: string
+      - in: query
+        name: origin__slug
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Route'
+          description: ''
+  /api/v1/trips/:
+    get:
+      operationId: v1_trips_list
+      description: |-
+        Upcoming bookable departures with live seat availability and fares.
+
+        Without ``date`` the next 7 days are returned.
+      parameters:
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: destination
+        schema:
+          type: string
+          minLength: 1
+          pattern: ^[-a-zA-Z0-9_]+$
+      - in: query
+        name: origin
+        schema:
+          type: string
+          minLength: 1
+          pattern: ^[-a-zA-Z0-9_]+$
+      - in: query
+        name: passengers
+        schema:
+          type: integer
+          maximum: 14
+          minimum: 1
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trip'
+          description: ''
+components:
+  schemas:
+    BookingCreateRequest:
+      type: object
+      description: Client input. Prices/totals are never accepted; any such fields
+        are ignored.
+      properties:
+        trip_id:
+          type: integer
+          minimum: 1
+        return_trip_id:
+          type: integer
+          minimum: 1
+          nullable: true
+        adults:
+          type: integer
+          maximum: 14
+          minimum: 1
+        children:
+          type: integer
+          maximum: 13
+          minimum: 0
+          default: 0
+        bags:
+          type: integer
+          maximum: 60
+          minimum: 0
+          default: 0
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 20
+        notes:
+          type: string
+          default: ''
+          maxLength: 1000
+        accept_terms:
+          type: boolean
+      required:
+      - accept_terms
+      - adults
+      - email
+      - full_name
+      - phone
+      - trip_id
+    BookingCreated:
+      type: object
+      properties:
+        reference:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BookingStatusEnum'
+          readOnly: true
+        status_label:
+          type: string
+          readOnly: true
+        trip_type:
+          allOf:
+          - $ref: '#/components/schemas/TripTypeEnum'
+          readOnly: true
+        trip:
+          allOf:
+          - $ref: '#/components/schemas/TripLeg'
+          readOnly: true
+        return_trip:
+          allOf:
+          - $ref: '#/components/schemas/TripLeg'
+          readOnly: true
+          nullable: true
+        adult_count:
+          type: integer
+          readOnly: true
+        child_count:
+          type: integer
+          readOnly: true
+        passenger_count:
+          type: integer
+          readOnly: true
+        bag_count:
+          type: integer
+          readOnly: true
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+          readOnly: true
+        subtotal_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        baggage_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        currency:
+          type: string
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/BookingCustomer'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        is_demo:
+          type: boolean
+          readOnly: true
+        is_paid:
+          type: boolean
+          readOnly: true
+          description: 'Always false: no payments in this demo.'
+        hold_expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        access_token:
+          type: string
+          readOnly: true
+          description: Secret required to view or cancel this booking. Shown only
+            to the creator.
+      required:
+      - access_token
+      - adult_count
+      - bag_count
+      - baggage_amount
+      - child_count
+      - created_at
+      - currency
+      - customer
+      - discount_amount
+      - hold_expires_at
+      - is_demo
+      - is_paid
+      - line_items
+      - notes
+      - passenger_count
+      - reference
+      - return_trip
+      - status
+      - status_label
+      - subtotal_amount
+      - total_amount
+      - trip
+      - trip_type
+    BookingCustomer:
+      type: object
+      properties:
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+      required:
+      - email
+      - full_name
+      - phone
+    BookingDetail:
+      type: object
+      properties:
+        reference:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BookingStatusEnum'
+          readOnly: true
+        status_label:
+          type: string
+          readOnly: true
+        trip_type:
+          allOf:
+          - $ref: '#/components/schemas/TripTypeEnum'
+          readOnly: true
+        trip:
+          allOf:
+          - $ref: '#/components/schemas/TripLeg'
+          readOnly: true
+        return_trip:
+          allOf:
+          - $ref: '#/components/schemas/TripLeg'
+          readOnly: true
+          nullable: true
+        adult_count:
+          type: integer
+          readOnly: true
+        child_count:
+          type: integer
+          readOnly: true
+        passenger_count:
+          type: integer
+          readOnly: true
+        bag_count:
+          type: integer
+          readOnly: true
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+          readOnly: true
+        subtotal_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        baggage_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        currency:
+          type: string
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/BookingCustomer'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        is_demo:
+          type: boolean
+          readOnly: true
+        is_paid:
+          type: boolean
+          readOnly: true
+          description: 'Always false: no payments in this demo.'
+        hold_expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - adult_count
+      - bag_count
+      - baggage_amount
+      - child_count
+      - created_at
+      - currency
+      - customer
+      - discount_amount
+      - hold_expires_at
+      - is_demo
+      - is_paid
+      - line_items
+      - notes
+      - passenger_count
+      - reference
+      - return_trip
+      - status
+      - status_label
+      - subtotal_amount
+      - total_amount
+      - trip
+      - trip_type
+    BookingStatusEnum:
+      enum:
+      - DRAFT
+      - HELD
+      - CONFIRMED
+      - CANCELLED
+      - EXPIRED
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `HELD` - Held (unpaid)
+        * `CONFIRMED` - Confirmed (demo, unpaid)
+        * `CANCELLED` - Cancelled
+        * `EXPIRED` - Expired
+    CharterInquiryCreateRequest:
+      type: object
+      properties:
+        service_type:
+          allOf:
+          - $ref: '#/components/schemas/ServiceTypeEnum'
+          default: CHARTER
+        contact_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 20
+        origin:
+          type: string
+          minLength: 1
+          maxLength: 120
+        destination:
+          type: string
+          minLength: 1
+          maxLength: 120
+        passenger_count:
+          type: integer
+          maximum: 250
+          minimum: 1
+        travel_date:
+          type: string
+          format: date
+        return_date:
+          type: string
+          format: date
+          nullable: true
+        pickup_time:
+          type: string
+          format: time
+          nullable: true
+        hours_requested:
+          type: integer
+          maximum: 12
+          minimum: 1
+          nullable: true
+        message:
+          type: string
+          default: ''
+          maxLength: 2000
+      required:
+      - contact_name
+      - destination
+      - email
+      - origin
+      - passenger_count
+      - phone
+      - travel_date
+    CharterInquiryReceipt:
+      type: object
+      properties:
+        status:
+          type: string
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    Fare:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        route:
+          allOf:
+          - $ref: '#/components/schemas/FareRoute'
+          readOnly: true
+        fare_type:
+          $ref: '#/components/schemas/FareTypeEnum'
+        fare_type_label:
+          type: string
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        round_trip_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          readOnly: true
+        currency:
+          type: string
+          maxLength: 3
+      required:
+      - amount
+      - currency
+      - fare_type
+      - fare_type_label
+      - id
+      - round_trip_amount
+      - route
+    FareRoute:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        origin_city:
+          type: string
+        destination_city:
+          type: string
+      required:
+      - destination_city
+      - id
+      - name
+      - origin_city
+      - slug
+    FareTypeEnum:
+      enum:
+      - ADULT
+      - CHILD
+      type: string
+      description: |-
+        * `ADULT` - Adult (12+)
+        * `CHILD` - Child (2–11)
+    KindEnum:
+      enum:
+      - fare
+      - discount
+      - baggage
+      type: string
+      description: |-
+        * `fare` - fare
+        * `discount` - discount
+        * `baggage` - baggage
+    LineItem:
+      type: object
+      properties:
+        label:
+          type: string
+        quantity:
+          type: integer
+        unit_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+      required:
+      - amount
+      - kind
+      - label
+      - quantity
+      - unit_amount
+    Location:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          maxLength: 60
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 120
+        city:
+          type: string
+          maxLength: 80
+        state:
+          type: string
+          maxLength: 2
+        address:
+          type: string
+          maxLength: 200
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        pickup_instructions:
+          type: string
+        allows_pickup:
+          type: boolean
+          description: Uncheck for drop-off-only points (e.g. unauthorized airport
+            curbs).
+        map_url:
+          type: string
+          readOnly: true
+      required:
+      - address
+      - allows_pickup
+      - city
+      - id
+      - latitude
+      - longitude
+      - map_url
+      - name
+      - pickup_instructions
+      - slug
+      - state
+    LocationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          maxLength: 60
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 120
+        city:
+          type: string
+          maxLength: 80
+        state:
+          type: string
+          maxLength: 2
+      required:
+      - city
+      - id
+      - name
+      - slug
+      - state
+    PricingPolicy:
+      type: object
+      properties:
+        round_trip_discount_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        group_min_passengers:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        group_discount_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        free_bags_per_passenger:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        extra_bag_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        max_bags_per_passenger:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        hourly_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          description: Hire-by-the-hour rate (demo).
+        hourly_minimum_hours:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        currency:
+          type: string
+          maxLength: 3
+      required:
+      - currency
+      - extra_bag_fee
+      - free_bags_per_passenger
+      - group_discount_percent
+      - group_min_passengers
+      - hourly_minimum_hours
+      - hourly_rate
+      - max_bags_per_passenger
+      - round_trip_discount_percent
+    Quote:
+      type: object
+      properties:
+        currency:
+          type: string
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        baggage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - baggage
+      - currency
+      - discount
+      - line_items
+      - subtotal
+      - total
+    QuoteRequestRequest:
+      type: object
+      properties:
+        trip_id:
+          type: integer
+          minimum: 1
+        return_trip_id:
+          type: integer
+          minimum: 1
+          nullable: true
+        adults:
+          type: integer
+          maximum: 14
+          minimum: 1
+        children:
+          type: integer
+          maximum: 13
+          minimum: 0
+          default: 0
+        bags:
+          type: integer
+          maximum: 60
+          minimum: 0
+          default: 0
+      required:
+      - adults
+      - trip_id
+    Route:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 120
+        origin:
+          allOf:
+          - $ref: '#/components/schemas/LocationSummary'
+          readOnly: true
+        destination:
+          allOf:
+          - $ref: '#/components/schemas/LocationSummary'
+          readOnly: true
+        estimated_duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        description:
+          type: string
+        adult_fare:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+          readOnly: true
+        child_fare:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+          readOnly: true
+        departure_times:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - adult_fare
+      - child_fare
+      - departure_times
+      - description
+      - destination
+      - estimated_duration_minutes
+      - id
+      - name
+      - origin
+      - slug
+    RouteSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 120
+        origin:
+          allOf:
+          - $ref: '#/components/schemas/LocationSummary'
+          readOnly: true
+        destination:
+          allOf:
+          - $ref: '#/components/schemas/LocationSummary'
+          readOnly: true
+        estimated_duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - destination
+      - estimated_duration_minutes
+      - id
+      - name
+      - origin
+      - slug
+    ServiceTypeEnum:
+      enum:
+      - CHARTER
+      - MEDICAL
+      - GROCERY_PHARMACY
+      - SHOPPING
+      - HOURLY
+      type: string
+      description: |-
+        * `CHARTER` - Private charter
+        * `MEDICAL` - Medical appointment ride (non-emergency)
+        * `GROCERY_PHARMACY` - Grocery / pharmacy run
+        * `SHOPPING` - Walmart / shopping trip
+        * `HOURLY` - Hire by the hour
+    Trip:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        route:
+          allOf:
+          - $ref: '#/components/schemas/RouteSummary'
+          readOnly: true
+        departure_datetime:
+          type: string
+          format: date-time
+        arrival_datetime:
+          type: string
+          format: date-time
+        duration_minutes:
+          type: integer
+          readOnly: true
+        capacity:
+          type: integer
+          maximum: 32767
+          minimum: 0
+          description: Bookable seats on the vehicle (demo value).
+        seats_remaining:
+          type: integer
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/TripStatusEnum'
+        adult_fare:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+          readOnly: true
+        child_fare:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+          readOnly: true
+        currency:
+          type: string
+          readOnly: true
+      required:
+      - adult_fare
+      - arrival_datetime
+      - capacity
+      - child_fare
+      - currency
+      - departure_datetime
+      - duration_minutes
+      - id
+      - route
+      - seats_remaining
+      - status
+    TripLeg:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        route:
+          allOf:
+          - $ref: '#/components/schemas/RouteSummary'
+          readOnly: true
+        departure_datetime:
+          type: string
+          format: date-time
+        arrival_datetime:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/TripStatusEnum'
+      required:
+      - arrival_datetime
+      - departure_datetime
+      - id
+      - route
+      - status
+    TripStatusEnum:
+      enum:
+      - SCHEDULED
+      - CANCELLED
+      - COMPLETED
+      type: string
+      description: |-
+        * `SCHEDULED` - Scheduled
+        * `CANCELLED` - Cancelled
+        * `COMPLETED` - Completed
+    TripTypeEnum:
+      enum:
+      - ONE_WAY
+      - ROUND_TRIP
+      type: string
+      description: |-
+        * `ONE_WAY` - One-way
+        * `ROUND_TRIP` - Round-trip
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
