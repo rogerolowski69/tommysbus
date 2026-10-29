@@ -1,6 +1,7 @@
 # Tommy's Bus — local services.
 #   Database only (default):   podman compose -f infra/compose.yaml up -d db
 #   Full stack in containers:  podman compose -f infra/compose.yaml --profile full up -d --build
+#   Public test URL:           add --profile tunnel (Cloudflare quick tunnel → web only)
 name: tommysbus
 
 services:
@@ -28,6 +29,9 @@ services:
     environment:
       SEED_DEMO_DATA: "true"
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,api
+      DJANGO_DEBUG: "false"
+      # visitor → Cloudflare/cloudflared → Next.js → Django: trust 2 hops for per-client rate limits
+      DJANGO_NUM_PROXIES: "2"
       DATABASE_URL: postgres://${POSTGRES_USER:-tommysbus}:${POSTGRES_PASSWORD:-tommysbus_dev_only}@db:5432/${POSTGRES_DB:-tommysbus}
     depends_on:
       db:
@@ -35,7 +39,7 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz')"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz')\""]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -54,10 +58,21 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 10s
       timeout: 5s
       retries: 10
+
+  # Cloudflare quick tunnel: random https://*.trycloudflare.com URL, no account or domain needed.
+  # Only the website is exposed; Django (admin, API docs) stays private behind Next.js.
+  tunnel:
+    profiles: ["tunnel"]
+    image: docker.io/cloudflare/cloudflared:latest
+    command: ["tunnel", "--no-autoupdate", "--url", "http://web:3000"]
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:

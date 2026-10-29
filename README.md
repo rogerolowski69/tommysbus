@@ -78,6 +78,22 @@ just up      # builds api + web images, starts db/api/web; the API migrates and 
 just down
 ```
 
+### Public test URL (Cloudflare quick tunnel)
+
+Share the containerised stack on a temporary `https://<random>.trycloudflare.com` URL. You don't need a
+Cloudflare account or a domain:
+
+```bash
+just up                                            # production containers on :3000 / :8000
+cloudflared tunnel --url http://localhost:3000     # prints the public URL (host cloudflared)
+# or, without installing cloudflared:
+just tunnel                                        # runs cloudflared as a container, then prints the URL
+```
+
+Only the website is exposed. Django's admin and API docs are not reachable through the tunnel. The
+URL changes on every restart, quick tunnels have no uptime guarantee, and this machine must stay on.
+For a stable URL, use a named tunnel on a domain you own.
+
 ## Testing & checks
 
 ```bash

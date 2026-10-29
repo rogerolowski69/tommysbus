@@ -77,6 +77,25 @@ e2e *args:
 up:
     {{compose}} --profile full up -d --build
 
-# Stop the container stack
+# Stop the container stack (including any tunnel)
 down:
-    {{compose}} --profile full down
+    {{compose}} --profile full --profile tunnel down
+
+# Publish the container stack on a temporary https://*.trycloudflare.com URL
+tunnel:
+    {{compose}} --profile full --profile tunnel up -d --build
+    @just tunnel-url
+
+# Print the current public tunnel URL
+tunnel-url:
+    #!/usr/bin/env sh
+    for i in $(seq 1 30); do
+      url=$({{compose}} logs tunnel 2>&1 | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1)
+      [ -n "$url" ] && { echo "Public URL: $url"; exit 0; }
+      sleep 2
+    done
+    echo "Tunnel URL not found yet; check: {{compose}} logs tunnel" >&2; exit 1
+
+# Stop only the public tunnel (site stays running locally)
+tunnel-down:
+    {{compose}} --profile tunnel stop tunnel
