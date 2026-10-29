@@ -1,6 +1,21 @@
+# Keep the build context small and free of secrets.
+.env
+.env.*
+.dev.vars*
+*.pem
+*.key
+.git
 .venv
 **/__pycache__
+*.pyc
 .pytest_cache
 .ruff_cache
+.coverage
+htmlcov
 staticfiles
 *.db
+*.sqlite3
+*.log
+tests
+Dockerfile
+.dockerignore

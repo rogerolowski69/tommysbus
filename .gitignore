@@ -1,6 +1,13 @@
+# Secrets / local env
 .env
 .env.*
 !.env.example
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+
+# Python
 __pycache__/
 *.pyc
 .venv/
@@ -9,12 +16,26 @@ __pycache__/
 .coverage
 htmlcov/
 staticfiles/
+*.sqlite3
+*.db
+
+# Node / Next.js
 node_modules/
 .next/
 out/
-playwright-report/
-test-results/
 *.tsbuildinfo
 next-env.d.ts
-.DS_Store
+playwright-report/
+test-results/
+
+# Cloudflare / Wrangler / OpenNext
+.wrangler/
+.open-next/
+
+# Tooling & OS
 .mantis/
+.playwright-mcp/
+*.log
+.DS_Store
+.idea/
+.vscode/
